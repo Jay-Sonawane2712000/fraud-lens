@@ -11,6 +11,7 @@ FEATURE_DIR = PROJECT_ROOT / "outputs" / "features"
 FIGURE_DIR = PROJECT_ROOT / "outputs" / "figures"
 REPORT_DIR = PROJECT_ROOT / "outputs" / "reports"
 MODEL_DIR = PROJECT_ROOT / "models" / "saved"
+ANALYTICS_DB_PATH = PROJECT_ROOT / "analytics" / "fraud_lens.duckdb"
 
 REQUIRED_FILES = {
     "Module 1 feature sample": FEATURE_DIR / "module1_engineered_features_sample.csv",
@@ -57,6 +58,25 @@ def load_text_safely(path: str) -> str | None:
     if not file_exists(text_path):
         return None
     return text_path.read_text(encoding="utf-8")
+
+
+@st.cache_data(show_spinner=False)
+def load_duckdb_table_safely(database_path: str, schema_name: str, table_name: str) -> pd.DataFrame | None:
+    """Load a DuckDB table if the analytics database is available."""
+    db_path = Path(database_path)
+    if not file_exists(db_path):
+        return None
+
+    try:
+        import duckdb
+
+        with duckdb.connect(str(db_path), read_only=True) as connection:
+            return connection.execute(
+                f"select * from {schema_name}.{table_name}"
+            ).fetchdf()
+    except Exception as exc:
+        st.warning(f"Could not load analytics table `{table_name}`: {exc}")
+        return None
 
 
 def show_missing_artifact_warning() -> None:
@@ -288,6 +308,144 @@ def show_transaction_explainer() -> None:
     st.dataframe(top_risky, use_container_width=True)
 
 
+def show_fraud_analytics_marts() -> None:
+    """Render Module 6 dbt/DuckDB analytics marts."""
+    st.header("Fraud Analytics Marts")
+    st.write(
+        "Module 6 turns generated model outputs into analyst-ready DuckDB marts "
+        "for threshold tradeoffs, review queues, and segment risk monitoring."
+    )
+
+    if not file_exists(ANALYTICS_DB_PATH):
+        st.warning("Module 6 analytics database is missing. Run dbt first.")
+        st.code("cd analytics\ndbt run --profiles-dir .", language="powershell")
+        return
+
+    model_performance = load_duckdb_table_safely(
+        str(ANALYTICS_DB_PATH), "main_marts", "model_performance_summary"
+    )
+    threshold_tradeoffs = load_duckdb_table_safely(
+        str(ANALYTICS_DB_PATH), "main_marts", "threshold_tradeoff_summary"
+    )
+    review_queue = load_duckdb_table_safely(
+        str(ANALYTICS_DB_PATH), "main_marts", "review_queue_summary"
+    )
+    high_risk_segments = load_duckdb_table_safely(
+        str(ANALYTICS_DB_PATH), "main_marts", "high_risk_segments"
+    )
+    fraud_rate_segments = load_duckdb_table_safely(
+        str(ANALYTICS_DB_PATH), "main_marts", "fraud_rate_by_segment"
+    )
+
+    st.subheader("Model Performance Summary")
+    if model_performance is not None and not model_performance.empty:
+        row = model_performance.iloc[0]
+        kpi_row_1 = st.columns(4)
+        kpi_row_1[0].metric("Optimized Threshold", format_value(row.get("optimized_threshold"), "decimal"))
+        kpi_row_1[1].metric("Recall", format_value(row.get("recall"), "decimal"))
+        kpi_row_1[2].metric("Precision", format_value(row.get("precision"), "decimal"))
+        kpi_row_1[3].metric("F2", format_value(row.get("f2"), "decimal"))
+
+        kpi_row_2 = st.columns(3)
+        kpi_row_2[0].metric("Total Cost", format_value(row.get("total_cost"), "currency"))
+        kpi_row_2[1].metric("Value Saved", format_value(row.get("total_value_saved"), "currency"))
+        kpi_row_2[2].metric(
+            "Net Business Impact",
+            format_value(row.get("net_business_impact"), "currency"),
+        )
+        st.dataframe(model_performance, use_container_width=True)
+    else:
+        st.info("Model performance mart is not available.")
+
+    st.subheader("Threshold Tradeoff Summary")
+    if threshold_tradeoffs is not None:
+        threshold_columns = [
+            "threshold",
+            "recall",
+            "precision",
+            "f2",
+            "total_cost",
+            "review_volume",
+        ]
+        visible_thresholds = threshold_tradeoffs[
+            [column for column in threshold_columns if column in threshold_tradeoffs.columns]
+        ]
+        st.dataframe(visible_thresholds, use_container_width=True)
+        if {"threshold", "total_cost", "review_volume"}.issubset(threshold_tradeoffs.columns):
+            fig = px.line(
+                threshold_tradeoffs,
+                x="threshold",
+                y=["total_cost", "review_volume"],
+                title="Cost and Review Volume by Threshold",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Threshold tradeoff mart is not available.")
+
+    st.subheader("Review Queue Preview")
+    if review_queue is not None:
+        review_columns = [
+            "TransactionID",
+            "fraud_probability",
+            "recommended_action_label",
+            "recommendation",
+            "top_shap_driver_proxy",
+            "TransactionAmt",
+            "transaction_hour",
+        ]
+        visible_review_queue = review_queue[
+            [column for column in review_columns if column in review_queue.columns]
+        ].sort_values("fraud_probability", ascending=False)
+        st.dataframe(visible_review_queue.head(100), use_container_width=True)
+    else:
+        st.info("Review queue mart is not available.")
+
+    st.subheader("High-Risk Segments")
+    if high_risk_segments is not None:
+        high_risk_columns = [
+            "risk_rank",
+            "segment_key",
+            "transaction_count",
+            "fraud_count",
+            "fraud_rate",
+            "fraud_rate_lift",
+            "fraud_volume_share",
+        ]
+        visible_high_risk = high_risk_segments[
+            [column for column in high_risk_columns if column in high_risk_segments.columns]
+        ].sort_values("risk_rank")
+        st.dataframe(visible_high_risk, use_container_width=True)
+        if {"risk_rank", "fraud_count", "fraud_rate_lift"}.issubset(high_risk_segments.columns):
+            fig = px.bar(
+                high_risk_segments.sort_values("risk_rank").head(15),
+                x="risk_rank",
+                y="fraud_count",
+                color="fraud_rate_lift",
+                title="Top High-Risk Segments by Fraud Volume",
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("High-risk segments mart is not available.")
+
+    st.subheader("Fraud Rate by Segment")
+    if fraud_rate_segments is not None:
+        segment_columns = [
+            "identity_device_category",
+            "email_domain_risk_tier",
+            "transaction_amount_band",
+            "time_window",
+            "transaction_count",
+            "fraud_count",
+            "fraud_rate",
+        ]
+        visible_segments = fraud_rate_segments[
+            [column for column in segment_columns if column in fraud_rate_segments.columns]
+        ].sort_values("fraud_rate", ascending=False)
+        st.dataframe(visible_segments, use_container_width=True)
+    else:
+        st.info("Fraud rate by segment mart is not available.")
+
+
 def show_methodology() -> None:
     """Render recruiter-friendly methodology notes and Q&A."""
     st.header("Project Methodology")
@@ -363,13 +521,20 @@ def main() -> None:
 
     view = st.sidebar.radio(
         "Navigation",
-        ["Portfolio Overview", "Single Transaction Explainer", "Project Methodology"],
+        [
+            "Portfolio Overview",
+            "Single Transaction Explainer",
+            "Fraud Analytics Marts",
+            "Project Methodology",
+        ],
     )
 
     if view == "Portfolio Overview":
         show_overview()
     elif view == "Single Transaction Explainer":
         show_transaction_explainer()
+    elif view == "Fraud Analytics Marts":
+        show_fraud_analytics_marts()
     else:
         show_methodology()
 
