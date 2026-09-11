@@ -26,3 +26,5 @@ analytics/dbt_packages/
 analytics/logs/
 analytics/*.duckdb
 analytics/*.duckdb.wal
+analytics/.user.yml
+.user.yml
