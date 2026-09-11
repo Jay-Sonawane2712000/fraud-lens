@@ -51,3 +51,81 @@ models:
 
   - name: stg_shap_global_importance
     description: Global SHAP feature importance from Module 5.
+
+  - name: fraud_rate_by_segment
+    description: Fraud rates by analyst-friendly segment dimensions.
+    columns:
+      - name: segment_key
+        tests:
+          - not_null
+          - unique
+      - name: transaction_count
+        tests:
+          - not_null
+      - name: fraud_rate
+        tests:
+          - not_null
+
+  - name: threshold_tradeoff_summary
+    description: Cost and performance tradeoffs across thresholds for the selected model.
+    columns:
+      - name: threshold
+        tests:
+          - not_null
+          - unique
+      - name: recall
+        tests:
+          - not_null
+      - name: precision
+        tests:
+          - not_null
+      - name: f2
+        tests:
+          - not_null
+
+  - name: review_queue_summary
+    description: Transactions above the chosen threshold for analyst review.
+    columns:
+      - name: TransactionID
+        tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('stg_transactions_features')
+                field: TransactionID
+      - name: fraud_probability
+        tests:
+          - not_null
+      - name: recommended_action_label
+        tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - review immediately
+                  - review this shift
+                  - monitor / queued review
+
+  - name: model_performance_summary
+    description: One-row summary for the chosen cost-sensitive model threshold.
+    columns:
+      - name: model_name
+        tests:
+          - not_null
+      - name: optimized_threshold
+        tests:
+          - not_null
+
+  - name: high_risk_segments
+    description: Segments with fraud rates above the overall base fraud rate, ranked by fraud volume contribution.
+    columns:
+      - name: segment_key
+        tests:
+          - not_null
+          - unique
+      - name: risk_rank
+        tests:
+          - not_null
+      - name: fraud_rate_lift
+        tests:
+          - not_null
