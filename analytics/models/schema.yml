@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: stg_transactions_features
+    description: Transaction-level engineered feature matrix from Module 1.
+    columns:
+      - name: TransactionID
+        tests:
+          - not_null
+          - unique
+      - name: isFraud
+        tests:
+          - not_null
+
+  - name: stg_transaction_predictions
+    description: Transaction-level prediction and recommendation index from Module 5.
+    columns:
+      - name: TransactionID
+        tests:
+          - not_null
+          - unique
+      - name: fraud_probability
+        tests:
+          - not_null
+      - name: recommendation
+        tests:
+          - not_null
+
+  - name: stg_threshold_search
+    description: Threshold-level cost search results from Module 3.
+    columns:
+      - name: threshold
+        tests:
+          - not_null
+
+  - name: stg_best_model_metadata
+    description: Single-row metadata for the selected Module 3 cost-sensitive model.
+    columns:
+      - name: optimized_threshold
+        tests:
+          - not_null
+
+  - name: stg_model_comparison
+    description: Model-threshold comparison results from Module 3.
+
+  - name: stg_anomaly_topk
+    description: Top-K anomaly detection comparison from Module 4.
+
+  - name: stg_anomaly_method_summary
+    description: Supervised versus unsupervised method comparison from Module 4.
+
+  - name: stg_shap_global_importance
+    description: Global SHAP feature importance from Module 5.

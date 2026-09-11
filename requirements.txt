@@ -11,3 +11,6 @@ streamlit
 keras
 tensorflow
 jupyter
+dbt-core
+duckdb
+dbt-duckdb

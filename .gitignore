@@ -20,3 +20,9 @@ __pycache__/
 .venv/
 venv/
 .env
+
+analytics/target/
+analytics/dbt_packages/
+analytics/logs/
+analytics/*.duckdb
+analytics/*.duckdb.wal

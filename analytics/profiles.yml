@@ -1,0 +1,7 @@
+fraud_lens_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: fraud_lens.duckdb
+      threads: 1

@@ -1,0 +1,27 @@
+name: fraud_lens_analytics
+version: "1.0.0"
+config-version: 2
+
+profile: fraud_lens_analytics
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  source_root: ".."
+  min_segment_size: 100
+
+models:
+  fraud_lens_analytics:
+    staging:
+      +materialized: table
+      +schema: staging
