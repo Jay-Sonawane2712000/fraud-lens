@@ -4,7 +4,7 @@ FraudLens is a production-oriented fraud analytics project that combines cost-se
 
 ## Project Summary
 
-Fraud detection is a high-imbalance problem: fraudulent transactions are rare, but missing them can be expensive. FraudLens addresses this by moving beyond raw accuracy and evaluating models with recall, F2-score, AUC-PR, and explicit business cost.
+Fraud detection is a highly imbalanced classification problem: fraudulent transactions are rare, but missing them can be expensive. FraudLens addresses this by moving beyond raw accuracy and evaluating models with recall, F2-score, AUC-PR, and explicit business cost.
 
 The system uses engineered transaction-risk features, imbalance-aware baselines, cost-sensitive LightGBM/XGBoost modeling, unsupervised anomaly detection for novel fraud behavior, SHAP explanations, and a dbt + DuckDB analytics layer that converts model outputs into analyst-ready decision tables.
 
