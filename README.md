@@ -239,7 +239,7 @@ dbt test --profiles-dir .
 cd ..
 ```
 
-If `analytics/fraud_lens.duckdb` is missing, rebuild it with:
+If `analytics/fraud_lens.duckdb` is missing after setup, rebuild it with:
 
 ```powershell
 cd analytics
