@@ -193,7 +193,7 @@ The current implementation uses Matplotlib for visualization and scikit-learn an
 
 ## Setup Instructions
 
-Clone the repository:
+Clone this repository:
 
 ```powershell
 git clone <your-repo-url>
